@@ -1,0 +1,5 @@
+biopython>=1.83
+plotly>=5.20
+streamlit>=1.35
+pydantic>=2.7
+typer>=0.12
