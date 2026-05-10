@@ -589,6 +589,54 @@ div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:ho
 }
 .chrom-section-pad { padding: 14px 20px 16px; }
 
+/* ── Sidebar brand ───────────────────────────────────────────────────── */
+.sidebar-brand { padding: 6px 0 20px; }
+.sb-logo {
+    font-size: 1.7rem; font-weight: 800; letter-spacing: -1px;
+    line-height: 1; margin-bottom: 4px;
+}
+.sb-hbb { color: #F1F5F9; }
+.sb-seq { color: #3B82F6; font-weight: 600; }
+.sb-sub {
+    font-size: 0.60rem; color: #475569;
+    letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+}
+
+/* ── Landing page ────────────────────────────────────────────────────── */
+.landing-wrap {
+    max-width: 720px; margin: 52px auto 0; text-align: center;
+}
+.landing-title {
+    font-size: 5.2rem; font-weight: 800; letter-spacing: -4px;
+    line-height: 1; margin-bottom: 18px; color: #F1F5F9;
+}
+.landing-title .lt-seq { color: #3B82F6; font-weight: 600; letter-spacing: -1px; }
+.landing-tagline {
+    font-size: 1.05rem; color: #64748B; line-height: 1.75;
+    margin-bottom: 52px; font-weight: 400;
+}
+.landing-tagline strong { color: #94A3B8; font-weight: 500; }
+.landing-step {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 28px 22px 26px; text-align: center;
+    transition: border-color 0.2s;
+}
+.landing-step:hover { border-color: rgba(59,130,246,0.25); }
+.landing-step-num {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: #3B82F6; margin-bottom: 12px;
+}
+.landing-step-icon { font-size: 1.5rem; margin-bottom: 10px; }
+.landing-step-title {
+    font-size: 0.95rem; font-weight: 600; color: #E2E8F0; margin-bottom: 8px;
+}
+.landing-step-desc { font-size: 0.82rem; color: #475569; line-height: 1.65; }
+.landing-footer {
+    text-align: center; margin-top: 52px;
+    font-size: 0.70rem; color: #1E293B; letter-spacing: 0.8px;
+}
+
 /* ── Full chromatogram tab section headers ───────────────────────────── */
 .trace-section-header {
     display: flex; align-items: center; gap: 9px;
@@ -751,21 +799,16 @@ def main() -> None:
     )
     _inject_css()
 
-    # ── Page header ───────────────────────────────────────────────────────────
-    st.markdown(
-        '<h1 class="app-title">'
-        '<span class="title-hbb">HBB</span>'
-        '<span class="title-seq">seq</span>'
-        '</h1>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<p class="app-subtitle">Beta-Globin &nbsp;·&nbsp; Sanger variant analysis</p>',
-        unsafe_allow_html=True,
-    )
-
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
+        st.markdown(
+            '<div class="sidebar-brand">'
+            '<div class="sb-logo"><span class="sb-hbb">HBB</span><span class="sb-seq">seq</span></div>'
+            '<div class="sb-sub">Beta-Globin &nbsp;·&nbsp; Sanger Analysis</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<hr class="section-rule" style="margin-top:0">', unsafe_allow_html=True)
         st.markdown('<span class="sidebar-label">Input Mode</span>', unsafe_allow_html=True)
         mode = st.radio(
             "mode", ["Paired (Fwd + Rev)", "Single Strand"],
@@ -811,7 +854,47 @@ def main() -> None:
 
     if not can_run:
         st.markdown(
-            '<div class="alert alert-info">Upload trace file(s) via the sidebar, then click <strong>Run Analysis</strong>.</div>',
+            '<div class="landing-wrap">'
+            '<div class="landing-title"><span>HBB</span><span class="lt-seq">seq</span></div>'
+            '<div class="landing-tagline">'
+            'Automated Sanger sequencing analysis for<br>'
+            '<strong>beta-thalassaemia</strong> and <strong>sickle cell disease</strong>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        c1, c2, c3 = st.columns(3, gap="large")
+        c1.markdown(
+            '<div class="landing-step">'
+            '<div class="landing-step-num">Step 01</div>'
+            '<div class="landing-step-icon">📂</div>'
+            '<div class="landing-step-title">Upload traces</div>'
+            '<div class="landing-step-desc">Add your forward and reverse .ab1 files using the sidebar panel</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        c2.markdown(
+            '<div class="landing-step">'
+            '<div class="landing-step-num">Step 02</div>'
+            '<div class="landing-step-icon">⚡</div>'
+            '<div class="landing-step-title">Run analysis</div>'
+            '<div class="landing-step-desc">Dual-strand alignment, IUPAC variant calling, and HGVS annotation in seconds</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        c3.markdown(
+            '<div class="landing-step">'
+            '<div class="landing-step-num">Step 03</div>'
+            '<div class="landing-step-icon">🔬</div>'
+            '<div class="landing-step-title">Review results</div>'
+            '<div class="landing-step-desc">Variant cards, interactive chromatograms, QC metrics, and a downloadable report</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="landing-footer">'
+            '1,087 Ithanet variants &nbsp;·&nbsp; NM_000518.5 &nbsp;·&nbsp; For research use only'
+            '</div>',
             unsafe_allow_html=True,
         )
         return
