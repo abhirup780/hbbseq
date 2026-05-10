@@ -603,19 +603,25 @@ div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:ho
 }
 
 /* ── Landing page ────────────────────────────────────────────────────── */
+[data-testid="stMarkdownContainer"]:has(.landing-wrap) {
+    width: 100%;
+    text-align: center;
+}
 .landing-wrap {
-    max-width: 720px; margin: 52px auto 0; text-align: center;
+    width: 100%; margin: 52px 0 0;
+    display: flex; flex-direction: column; align-items: center;
 }
 .landing-title {
     font-size: 5.2rem; font-weight: 800; letter-spacing: -4px;
     line-height: 1; margin-bottom: 18px; color: #F1F5F9;
+    text-align: center; width: 100%;
 }
 .landing-title .lt-seq { color: #3B82F6; font-weight: 600; letter-spacing: -1px; }
 .landing-tagline {
     font-size: 1.05rem; color: #64748B; line-height: 1.75;
     margin-bottom: 52px; font-weight: 400;
+    text-align: center; width: 100%;
 }
-.landing-tagline strong { color: #94A3B8; font-weight: 500; }
 .landing-step {
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.07);
@@ -624,19 +630,13 @@ div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:ho
 }
 .landing-step:hover { border-color: rgba(59,130,246,0.25); }
 .landing-step-num {
-    font-size: 0.62rem; font-weight: 700; letter-spacing: 2px;
-    text-transform: uppercase; color: #3B82F6; margin-bottom: 12px;
+    font-size: 2rem; font-weight: 800; letter-spacing: -1px;
+    color: rgba(59,130,246,0.25); line-height: 1; margin-bottom: 16px;
 }
-.landing-step-icon { font-size: 1.5rem; margin-bottom: 10px; }
 .landing-step-title {
     font-size: 0.95rem; font-weight: 600; color: #E2E8F0; margin-bottom: 8px;
 }
 .landing-step-desc { font-size: 0.82rem; color: #475569; line-height: 1.65; }
-.landing-footer {
-    text-align: center; margin-top: 52px;
-    font-size: 0.70rem; color: #1E293B; letter-spacing: 0.8px;
-}
-
 /* ── Full chromatogram tab section headers ───────────────────────────── */
 .trace-section-header {
     display: flex; align-items: center; gap: 9px;
@@ -835,11 +835,6 @@ def main() -> None:
             can_run = single_file is not None
 
         st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
-        st.markdown('<span class="sidebar-label">Analysis Parameters</span>', unsafe_allow_html=True)
-        min_phred = st.slider("Trim quality (Phred)", 10, 30, 20)
-        het_ratio = st.slider("HET peak ratio", 0.15, 0.50, 0.25, step=0.01)
-
-        st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
         run_btn = st.button(
             "Run Analysis", type="primary",
             use_container_width=True, disabled=not can_run,
@@ -850,6 +845,11 @@ def main() -> None:
                 else "Upload a trace file to run."
             )
 
+        st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
+        st.markdown('<span class="sidebar-label">Analysis Parameters</span>', unsafe_allow_html=True)
+        min_phred = st.slider("Trim quality (Phred)", 10, 30, 20)
+        het_ratio = st.slider("HET peak ratio", 0.15, 0.50, 0.25, step=0.01)
+
     ref_path_str = str(_DEFAULT_REF)
 
     if not can_run:
@@ -857,8 +857,7 @@ def main() -> None:
             '<div class="landing-wrap">'
             '<div class="landing-title"><span>HBB</span><span class="lt-seq">seq</span></div>'
             '<div class="landing-tagline">'
-            'Automated Sanger sequencing analysis for<br>'
-            '<strong>beta-thalassaemia</strong> and <strong>sickle cell disease</strong>'
+            'Variant detection and HGVS annotation for <em>HBB</em> Sanger sequencing data.'
             '</div>'
             '</div>',
             unsafe_allow_html=True,
@@ -866,8 +865,7 @@ def main() -> None:
         c1, c2, c3 = st.columns(3, gap="large")
         c1.markdown(
             '<div class="landing-step">'
-            '<div class="landing-step-num">Step 01</div>'
-            '<div class="landing-step-icon">📂</div>'
+            '<div class="landing-step-num">01</div>'
             '<div class="landing-step-title">Upload traces</div>'
             '<div class="landing-step-desc">Add your forward and reverse .ab1 files using the sidebar panel</div>'
             '</div>',
@@ -875,8 +873,7 @@ def main() -> None:
         )
         c2.markdown(
             '<div class="landing-step">'
-            '<div class="landing-step-num">Step 02</div>'
-            '<div class="landing-step-icon">⚡</div>'
+            '<div class="landing-step-num">02</div>'
             '<div class="landing-step-title">Run analysis</div>'
             '<div class="landing-step-desc">Dual-strand alignment, IUPAC variant calling, and HGVS annotation in seconds</div>'
             '</div>',
@@ -884,16 +881,9 @@ def main() -> None:
         )
         c3.markdown(
             '<div class="landing-step">'
-            '<div class="landing-step-num">Step 03</div>'
-            '<div class="landing-step-icon">🔬</div>'
+            '<div class="landing-step-num">03</div>'
             '<div class="landing-step-title">Review results</div>'
             '<div class="landing-step-desc">Variant cards, interactive chromatograms, QC metrics, and a downloadable report</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            '<div class="landing-footer">'
-            '1,087 Ithanet variants &nbsp;·&nbsp; NM_000518.5 &nbsp;·&nbsp; For research use only'
             '</div>',
             unsafe_allow_html=True,
         )
@@ -933,6 +923,46 @@ def main() -> None:
         st.session_state["result"] = result
 
     if "result" not in st.session_state:
+        file_rows = ""
+        if fwd_file:
+            file_rows += (
+                f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px;">'
+                f'<span style="font-size:0.65rem;font-weight:700;letter-spacing:1.5px;'
+                f'text-transform:uppercase;color:#3B82F6;width:64px;flex-shrink:0;">Forward</span>'
+                f'<span style="font-family:ui-monospace,monospace;font-size:1rem;color:#CBD5E1;">'
+                f'{fwd_file.name}</span></div>'
+            )
+        if rev_file:
+            file_rows += (
+                f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px;">'
+                f'<span style="font-size:0.65rem;font-weight:700;letter-spacing:1.5px;'
+                f'text-transform:uppercase;color:#A78BFA;width:64px;flex-shrink:0;">Reverse</span>'
+                f'<span style="font-family:ui-monospace,monospace;font-size:1rem;color:#CBD5E1;">'
+                f'{rev_file.name}</span></div>'
+            )
+        if single_file:
+            label = "Reverse" if is_reverse else "Forward"
+            colour = "#A78BFA" if is_reverse else "#3B82F6"
+            file_rows += (
+                f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px;">'
+                f'<span style="font-size:0.65rem;font-weight:700;letter-spacing:1.5px;'
+                f'text-transform:uppercase;color:{colour};width:64px;flex-shrink:0;">{label}</span>'
+                f'<span style="font-family:ui-monospace,monospace;font-size:1rem;color:#CBD5E1;">'
+                f'{single_file.name}</span></div>'
+            )
+        st.markdown(
+            f'<div style="max-width:560px;margin:100px auto;text-align:left;">'
+            f'<div style="font-size:0.65rem;font-weight:700;letter-spacing:2.5px;'
+            f'text-transform:uppercase;color:#3B82F6;margin-bottom:24px;">Files loaded</div>'
+            f'{file_rows}'
+            f'<div style="margin-top:28px;padding-top:24px;'
+            f'border-top:1px solid rgba(255,255,255,0.07);'
+            f'font-size:0.9rem;color:#475569;">'
+            f'Click <strong style="color:#94A3B8;font-weight:600;">Run Analysis</strong> '
+            f'in the sidebar to begin.</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     result = st.session_state["result"]
