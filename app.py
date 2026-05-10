@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from PIL import Image, ImageDraw
+
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -432,9 +434,11 @@ def _inject_css() -> None:
 /* ── Result summary line ─────────────────────────────────────────────── */
 .result-header {
     font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-    color: #475569; margin: 4px 0 22px; padding-bottom: 12px;
+    margin: 4px 0 22px; padding-bottom: 12px;
     border-bottom: 1px solid rgba(255,255,255,0.07);
 }
+.result-header-count { color: #94A3B8; }
+.result-header-sample { color: #475569; font-weight: 500; }
 
 /* ── Metric boxes ────────────────────────────────────────────────────── */
 [data-testid="metric-container"] {
@@ -787,17 +791,52 @@ def _render_variant_block(
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Favicon
+# ---------------------------------------------------------------------------
+
+def _make_favicon() -> Image.Image:
+    """Blue rounded-square with a white bold H — renders cleanly at all favicon sizes."""
+    s = 64
+    blue = (59, 130, 246, 255)
+    white = (255, 255, 255, 255)
+
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Background: blue rounded square
+    try:
+        draw.rounded_rectangle([0, 0, s - 1, s - 1], radius=13, fill=blue)
+    except AttributeError:  # Pillow < 8.2
+        draw.rectangle([0, 0, s - 1, s - 1], fill=blue)
+
+    # H shape — two vertical bars + crossbar
+    pad, bar, mid_h = 14, 10, 4
+    mid = s // 2
+    draw.rectangle([pad,          pad, pad + bar,      s - pad], fill=white)  # left bar
+    draw.rectangle([s - pad - bar, pad, s - pad,        s - pad], fill=white)  # right bar
+    draw.rectangle([pad,          mid - mid_h, s - pad, mid + mid_h], fill=white)  # crossbar
+
+    return img
+
+
+# ---------------------------------------------------------------------------
 # Main UI
 # ---------------------------------------------------------------------------
 
 def main() -> None:
     st.set_page_config(
         page_title="HBBseq",
-        page_icon="dna",
+        page_icon=_make_favicon(),
         layout="wide",
         initial_sidebar_state="expanded",
     )
     _inject_css()
+    # Override Streamlit Cloud's "· Streamlit" title suffix
+    st.components.v1.html(
+        "<script>window.parent.document.title = 'HBBseq';</script>",
+        height=0,
+    )
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -1022,8 +1061,14 @@ def main() -> None:
             st.markdown(f'<div class="alert alert-pass">{msg}</div>',
                         unsafe_allow_html=True)
         else:
-            label_txt = f"{n} variant{'s' if n > 1 else ''} detected — {report.sample_id}"
-            st.markdown(f'<div class="result-header">{label_txt}</div>', unsafe_allow_html=True)
+            count_txt = f"{n} variant{'s' if n > 1 else ''} detected"
+            st.markdown(
+                f'<div class="result-header">'
+                f'<span class="result-header-count">{count_txt}</span>'
+                f'<span class="result-header-sample"> &nbsp;—&nbsp; {report.sample_id}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
             # Pre-compute significance for all display variants
             disp_sigs = {v.hgvs_c: _sig_for_variant(v) for v in display_variants}
