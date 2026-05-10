@@ -173,22 +173,33 @@ def run_pipeline(
                 het_ratio=het_ratio,
             )
 
-            # Het INDEL suspicion: scan each aligned strand independently for a
-            # sustained clean→noisy peak transition, which is the hallmark of a
-            # het INDEL causing the two alleles to fall out of phase.
-            for strand_label, strand_trace, strand_aligned in (
-                ("Forward", fwd_trimmed, fwd_aligned),
-                ("Reverse", rev_rc, rev_aligned),
+            # Het INDEL suspicion: scan each raw (untrimmed) IUPAC trace for a
+            # sustained clean→noisy peak transition — the hallmark of a het INDEL.
+            # Must use the untrimmed trace because Mott trimming removes the very
+            # low-quality noisy region that is the primary evidence for the breakpoint.
+            for strand_label, strand_raw, is_rev in (
+                ("Forward", fwd_raw, False),
+                ("Reverse", rev_raw, True),
             ):
-                if strand_trace is not None and strand_aligned is not None:
-                    bp = detect_het_indel_breakpoint(strand_trace, strand_aligned, translator)
-                    if bp is not None:
-                        warnings.append(
-                            f"⚠ Possible heterozygous INDEL ({strand_label}): mixed peaks "
-                            f"detected from approximately c.{bp} onwards in the {strand_label.lower()} "
-                            f"trace. This may indicate a heterozygous insertion or deletion "
-                            f"in one allele. Please review the trace manually."
-                        )
+                if strand_raw is None:
+                    continue
+                try:
+                    iupac_full = apply_iupac_symbols(strand_raw, cutoff=het_ratio)
+                    if is_rev:
+                        iupac_full = reverse_complement_trace(iupac_full)
+                    iupac_aligned = align_to_reference(iupac_full, ref)
+                    if iupac_aligned is None:
+                        continue
+                    bp = detect_het_indel_breakpoint(iupac_full, iupac_aligned, translator)
+                except Exception:
+                    bp = None
+                if bp is not None:
+                    warnings.append(
+                        f"⚠ Possible heterozygous INDEL ({strand_label}): mixed peaks "
+                        f"detected from approximately c.{bp} onwards in the {strand_label.lower()} "
+                        f"trace. This may indicate a heterozygous insertion or deletion "
+                        f"in one allele. Please review the trace manually."
+                    )
 
             qc: dict = {}
             if fwd_raw is not None:
@@ -275,8 +286,16 @@ def run_pipeline_single(
                 het_ratio=het_ratio,
             )
 
-            # Het INDEL suspicion check for single-strand mode
-            bp = detect_het_indel_breakpoint(trace_proc, aligned, translator)
+            # Het INDEL suspicion check — use untrimmed IUPAC trace so that the
+            # low-quality noisy region after the breakpoint is not Mott-trimmed away.
+            try:
+                iupac_full = apply_iupac_symbols(raw, cutoff=het_ratio)
+                if is_reverse:
+                    iupac_full = reverse_complement_trace(iupac_full)
+                iupac_aligned = align_to_reference(iupac_full, ref)
+                bp = detect_het_indel_breakpoint(iupac_full, iupac_aligned, translator) if iupac_aligned else None
+            except Exception:
+                bp = None
             if bp is not None:
                 single_warnings.append(
                     f"⚠ Possible heterozygous INDEL: mixed peaks detected from "
