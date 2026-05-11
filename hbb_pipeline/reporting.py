@@ -91,10 +91,10 @@ def render_markdown_report(report: ClinicalReport) -> str:
         lines.append("*No variants detected above Q20.*\n")
     else:
         lines.append(
-            "| Genomic pos | HGVS c. | HGVS p. (HGVS) | HGVS p. (legacy) | "
+            "| HGVS c. | HGVS p. (HGVS) | HGVS p. (legacy) | "
             "Region | Zygosity | Called by | Fwd ratio | Rev ratio | Known variant |"
         )
-        lines.append("|---|---|---|---|---|---|---|---|---|---|")
+        lines.append("|---|---|---|---|---|---|---|---|---|")
         for v in sorted(report.variants, key=lambda x: x.ref_pos_genomic):
             p_hgvs = v.hgvs_p_hgvs or "—"
             p_leg = v.hgvs_p_legacy or "—"
@@ -104,7 +104,7 @@ def render_markdown_report(report: ClinicalReport) -> str:
             called = ", ".join(v.called_by)
             flag = " ⚠" if v.requires_manual_review else ""
             lines.append(
-                f"| {v.ref_pos_genomic} | {v.hgvs_c} | {p_hgvs} | {p_leg} | "
+                f"| {v.hgvs_c} | {p_hgvs} | {p_leg} | "
                 f"{v.region} | {v.zygosity.value} | {called} | "
                 f"{fwd_r} | {rev_r} | {known}{flag} |"
             )

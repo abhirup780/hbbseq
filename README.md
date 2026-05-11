@@ -120,19 +120,17 @@ The registry is regenerated from the Ithanet CSV export using `generate_variants
 
 ## Reference sequence
 
-The bundled `reference/HBB_reference.fasta` is a **case-annotated 2,750 bp** sequence spanning the complete HBB locus. Case annotation (upper/lower) encodes functional regions and drives coordinate translation.
+The bundled `reference/HBB_reference.fasta` is a **case-annotated 2,750 bp** sequence spanning the complete HBB locus. Case annotation (upper/lower) encodes functional regions and drives coordinate translation. The gene diagram in the app displays the clinically relevant window (positions 700–2480), which encompasses all screened promoter variants and extends past Exon 3 to capture 3′ poly-A signal variants.
 
 | Region | Coordinates | Length |
 |---|---|---|
-| 5′ flank | 0–977 | 978 bp |
-| Exon 1 | 978–1071 | 94 bp |
-| Intron 1 | 1072–1541 | 470 bp |
-| Exon 2 | 1542–1694 | 153 bp |
-| Intron 2 | 1695–2148 | 454 bp |
-| Exon 3 | 2149–2279 | 131 bp |
-| 3′ flank | 2280–2749 | 470 bp |
+| Exon 1 | 978–1069 | 92 bp |
+| Intron 1 (IVS-I) | 1070–1199 | 130 bp |
+| Exon 2 | 1200–1422 | 223 bp |
+| Intron 2 (IVS-II) | 1423–2022 | 600 bp |
+| Exon 3 | 2023–2151 | 129 bp |
 
-HGVS coordinates follow **NM_000518.5** (CDS start = genomic position 978, Met = codon 1).
+HGVS coordinates follow **NM_000518.5** (CDS start = genomic position 978, Met = codon 1). Upstream positions use c.−N notation; downstream (3′) positions use c.\*N.
 
 ---
 

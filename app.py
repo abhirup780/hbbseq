@@ -38,6 +38,16 @@ _DEFAULT_REF = Path(__file__).parent / "reference" / "HBB_reference.fasta"
 # Bump this whenever pipeline code changes that affect cached results.
 _PIPELINE_VERSION = "35"
 
+_PLOTLY_CFG = {
+    "modeBarButtonsToRemove": [
+        "zoom2d", "pan2d", "select2d", "lasso2d",
+        "zoomIn2d", "zoomOut2d", "autoScale2d",
+        "hoverClosestCartesian", "hoverCompareCartesian",
+        "toggleSpikelines",
+    ],
+    "displaylogo": False,
+}
+
 
 # ---------------------------------------------------------------------------
 # Pipeline helpers
@@ -349,6 +359,28 @@ def run_pipeline_single(
 
 def _inject_css() -> None:
     st.markdown("""<style>
+/* ── Hide Streamlit chrome ───────────────────────────────────────────── */
+header[data-testid="stHeader"] { display: none !important; }
+#MainMenu { visibility: hidden !important; }
+.block-container { padding-top: 1.2rem !important; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────── */
+[data-testid="stTabs"] button[role="tab"] {
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    color: #475569 !important;
+    padding: 8px 18px !important;
+    text-transform: uppercase !important;
+}
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: #94A3B8 !important;
+}
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color: #E2E8F0 !important;
+}
+div:has(> [data-testid="stPills"]) { margin-bottom: -1rem !important; }
+
 /* ── Typography & base ───────────────────────────────────────────────── */
 .app-title {
     font-size: 3rem; font-weight: 800; letter-spacing: -1.5px;
@@ -376,6 +408,7 @@ def _inject_css() -> None:
     border-left: 3px solid; font-size: 0.855rem; line-height: 1.6;
 }
 .alert-warn { border-left-color: #92400E; background: rgba(120,80,20,0.10); color: #A8957A; }
+.alert-warn::before { content: "⚠"; margin-right: 7px; opacity: 0.65; }
 .alert-pass { border-left-color: #10B981; background: rgba(16,185,129,0.09); color: #6EE7B7; }
 .alert-info { border-left-color: #3B82F6; background: rgba(59,130,246,0.09); color: #93C5FD; }
 
@@ -434,7 +467,7 @@ def _inject_css() -> None:
 /* ── Result summary line ─────────────────────────────────────────────── */
 .result-header {
     font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-    margin: 4px 0 22px; padding-bottom: 12px;
+    margin: 4px 0 8px; padding-bottom: 10px;
     border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .result-header-count { color: #94A3B8; }
@@ -459,6 +492,14 @@ def _inject_css() -> None:
 section[data-testid="stSidebar"] {
     border-right: 1px solid rgba(255,255,255,0.07);
 }
+/* Collapse the empty header-reservation block inside the sidebar */
+[data-testid="stSidebarHeader"] {
+    min-height: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+[data-testid="stSidebarContent"] { padding-top: 1.2rem !important; }
 /* Widget labels and help text — lift contrast from Streamlit's default */
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] .stWidgetLabel,
@@ -524,44 +565,50 @@ section[data-testid="stSidebar"] .stCaption {
     font-weight: 600 !important;
 }
 
-/* ── Reject / dismiss: float ✕ button into card top-right corner ─────── */
-/* Hook: target horizontal blocks whose first column contains our .vcard HTML */
+/* ── Dismiss/reject: ✕ button pinned to card top-right corner ──────── */
 div[data-testid="stHorizontalBlock"]:has(.vcard),
 div[data-testid="stHorizontalBlock"]:has(.alert-warn) {
-    align-items: flex-start !important;
+    position: relative !important;
+    align-items: stretch !important;
     gap: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.vcard) > div:first-child,
 div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:first-child {
-    flex: 1 1 auto !important;
+    flex: 1 1 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.vcard) > div:last-child,
 div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child {
-    flex: 0 0 auto !important;
-    margin-left: -52px;
-    padding-top: 9px;
-    z-index: 20;
-    position: relative;
+    position: absolute !important;
+    top: 10px !important;
+    right: 14px !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 20 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.vcard) > div:last-child button,
 div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button {
-    padding: 3px 9px !important;
-    min-height: 28px !important;
-    width: 32px !important;
-    background: rgba(22,22,32,0.72) !important;
-    border: 1px solid rgba(255,255,255,0.13) !important;
-    color: rgba(255,255,255,0.38) !important;
-    font-size: 0.75rem !important;
-    border-radius: 6px !important;
+    width: 26px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    color: rgba(255,255,255,0.28) !important;
+    font-size: 0.70rem !important;
+    border-radius: 5px !important;
     line-height: 1 !important;
-    backdrop-filter: blur(6px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.vcard) > div:last-child button:hover,
 div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:hover {
-    border-color: rgba(255,255,255,0.32) !important;
-    color: rgba(255,255,255,0.72) !important;
-    background: rgba(50,50,68,0.88) !important;
+    background: rgba(255,255,255,0.09) !important;
+    border-color: rgba(255,255,255,0.25) !important;
+    color: rgba(255,255,255,0.65) !important;
 }
 
 /* ── Variant review blocks (st.container border=True) ───────────────── */
@@ -569,11 +616,13 @@ div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:ho
     border-color: rgba(255,255,255,0.09) !important;
     border-radius: 12px !important;
     margin-bottom: 22px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     padding: 0 !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"] > div {
     padding: 0 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
 }
 /* Card inside block: flush top, no radius (container clips it), thicker indicator */
 [data-testid="stVerticalBlockBorderWrapper"] .vcard {
@@ -594,7 +643,7 @@ div[data-testid="stHorizontalBlock"]:has(.alert-warn) > div:last-child button:ho
 .chrom-section-pad { padding: 14px 20px 16px; }
 
 /* ── Sidebar brand ───────────────────────────────────────────────────── */
-.sidebar-brand { padding: 6px 0 20px; }
+.sidebar-brand { padding: 0 0 16px; }
 .sb-logo {
     font-size: 1.7rem; font-weight: 800; letter-spacing: -1px;
     line-height: 1; margin-bottom: 4px;
@@ -765,7 +814,7 @@ def _render_variant_block(
                         min(len(fwd_trace.sequence), tidx + 21),
                         highlight_pos=tidx,
                     )
-                    st.plotly_chart(fig, key=f"chrom_fwd_{gpos}", use_container_width=True)
+                    st.plotly_chart(fig, key=f"chrom_fwd_{gpos}", use_container_width=True, config=_PLOTLY_CFG)
         with c2:
             st.markdown('<span class="sidebar-label">Reverse complement</span>',
                         unsafe_allow_html=True)
@@ -786,7 +835,7 @@ def _render_variant_block(
                         min(len(rev_rc.sequence), tidx_r + 21),
                         highlight_pos=tidx_r,
                     )
-                    st.plotly_chart(fig, key=f"chrom_rev_{gpos}", use_container_width=True)
+                    st.plotly_chart(fig, key=f"chrom_rev_{gpos}", use_container_width=True, config=_PLOTLY_CFG)
         st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -1043,7 +1092,8 @@ def main() -> None:
             if i in dismissed_w:
                 continue
             col_msg, col_x = st.columns([0.97, 0.03])
-            col_msg.markdown(f'<div class="alert alert-warn">{w}</div>',
+            w_text = w.lstrip("⚠").lstrip()
+            col_msg.markdown(f'<div class="alert alert-warn">{w_text}</div>',
                              unsafe_allow_html=True)
             col_x.button("✕", key=f"dismiss_w_{i}", help="Dismiss warning",
                          on_click=dismissed_w.add, args=(i,))
@@ -1070,9 +1120,22 @@ def main() -> None:
                 unsafe_allow_html=True,
             )
 
-            # Pre-compute significance for all display variants
-            disp_sigs = {v.hgvs_c: _sig_for_variant(v) for v in display_variants}
+        # Gene coverage map — always shown in summary
+        _fwd_al = result["fwd_aligned"]
+        _rev_al = result["rev_aligned"]
+        _fig_cov_sum = plot_coverage_map(
+            _fwd_al.reference_start if _fwd_al else None,
+            _fwd_al.reference_end   if _fwd_al else None,
+            _rev_al.reference_start if _rev_al else None,
+            _rev_al.reference_end   if _rev_al else None,
+            variants=display_variants if n > 0 else None,
+        )
+        st.plotly_chart(_fig_cov_sum, use_container_width=True, key="sum_cov_map", config=_PLOTLY_CFG)
 
+        if n > 0:
+            st.markdown('<hr class="section-rule" style="margin-top:4px">',
+                        unsafe_allow_html=True)
+            disp_sigs = {v.hgvs_c: _sig_for_variant(v) for v in display_variants}
             for v in display_variants:
                 sig = disp_sigs[v.hgvs_c]
                 col_card, col_x = st.columns([0.97, 0.03])
@@ -1103,58 +1166,65 @@ def main() -> None:
 
     # ── Quality Control ───────────────────────────────────────────────────────
     with tab_qc:
-        qc     = report.qc_metrics
-        fwd_al = result["fwd_aligned"]
-        rev_al = result["rev_aligned"]
+        qc = report.qc_metrics
 
-        show_var_ticks = st.checkbox(
-            "Show variant positions on gene map", value=True, key="cov_show_variants"
-        )
-        fig_cov = plot_coverage_map(
-            fwd_al.reference_start if fwd_al else None,
-            fwd_al.reference_end   if fwd_al else None,
-            rev_al.reference_start if rev_al else None,
-            rev_al.reference_end   if rev_al else None,
-            variants=filtered_variants if show_var_ticks else None,
-        )
-        st.plotly_chart(fig_cov, use_container_width=True)
-
-        st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
+        st.markdown('<span class="sidebar-label">Read quality</span>', unsafe_allow_html=True)
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Quality (Fwd)", qc.get("mean_phred_fwd", "—"), help="Mean Phred score, forward read")
-        c2.metric("Quality (Rev)", qc.get("mean_phred_rev", "—"), help="Mean Phred score, reverse read")
-        c3.metric("CDS Coverage",  qc.get("cds_coverage_pct", "—"), help="Fraction of coding exons covered")
-        c4.metric("Usable bp (Fwd)", f"{qc.get('usable_length_fwd', '—')} bp", help="Bases after quality trimming")
-        c5.metric("Usable bp (Rev)", f"{qc.get('usable_length_rev', '—')} bp", help="Bases after quality trimming")
+        c1.metric("Mean Phred · Fwd",  qc.get("mean_phred_fwd", "—"),
+                  help="Mean Phred quality score, forward read")
+        c2.metric("Mean Phred · Rev",  qc.get("mean_phred_rev", "—"),
+                  help="Mean Phred quality score, reverse read")
+        c3.metric("CDS Coverage",      qc.get("cds_coverage_pct", "—"),
+                  help="Fraction of coding exons covered by at least one read")
+        c4.metric("Usable bp · Fwd",   f"{qc.get('usable_length_fwd', '—')} bp",
+                  help="Bases retained after Mott Q20 quality trimming")
+        c5.metric("Usable bp · Rev",   f"{qc.get('usable_length_rev', '—')} bp",
+                  help="Bases retained after Mott Q20 quality trimming")
 
         import plotly.graph_objects as go
         fwd_phred = result.get("fwd_phred_raw")
         rev_phred = result.get("rev_phred_raw")
         if fwd_phred or rev_phred:
-            st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
+            st.markdown(
+                '<hr class="section-rule">'
+                '<span class="sidebar-label">Phred score distribution</span>',
+                unsafe_allow_html=True,
+            )
             fig_q = go.Figure()
             if fwd_phred:
-                fig_q.add_trace(go.Histogram(x=fwd_phred, name="Forward",
-                                             opacity=0.75, nbinsx=40,
-                                             marker_color="#3B82F6"))
+                fig_q.add_trace(go.Histogram(
+                    x=fwd_phred, name="Forward", nbinsx=40,
+                    opacity=0.72, marker_color="#3B82F6", marker_line_width=0,
+                ))
             if rev_phred:
-                fig_q.add_trace(go.Histogram(x=rev_phred, name="Reverse",
-                                             opacity=0.75, nbinsx=40,
-                                             marker_color="#EF4444"))
+                fig_q.add_trace(go.Histogram(
+                    x=rev_phred, name="Reverse", nbinsx=40,
+                    opacity=0.72, marker_color="#EF4444", marker_line_width=0,
+                ))
+            fig_q.add_vline(
+                x=20, line_dash="dash", line_color="rgba(245,158,11,0.55)", line_width=1.5,
+                annotation_text="Q20", annotation_position="top right",
+                annotation_font=dict(color="rgba(245,158,11,0.65)", size=10),
+            )
             fig_q.update_layout(
-                barmode="overlay", height=260,
-                title=dict(text="Phred score distribution", font=dict(size=13, color="#94A3B8")),
-                xaxis=dict(title="Phred score", color="#64748B",
-                           gridcolor="rgba(100,116,139,0.2)", zeroline=False),
-                yaxis=dict(title="Base count", color="#64748B",
-                           gridcolor="rgba(100,116,139,0.2)", zeroline=False),
+                barmode="overlay", height=240,
+                xaxis=dict(
+                    title=dict(text="Phred score", font=dict(size=11, color="#4B5563")),
+                    color="#64748B", gridcolor="rgba(100,116,139,0.1)", zeroline=False,
+                ),
+                yaxis=dict(
+                    title=dict(text="Base count", font=dict(size=11, color="#4B5563")),
+                    color="#64748B", gridcolor="rgba(100,116,139,0.1)", zeroline=False,
+                ),
                 plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="#94A3B8"),
-                legend=dict(orientation="h", x=1, xanchor="right", y=1,
-                            bgcolor="rgba(0,0,0,0)"),
-                margin=dict(l=10, r=10, t=40, b=10),
+                legend=dict(
+                    orientation="h", x=0, xanchor="left", y=1,
+                    bgcolor="rgba(0,0,0,0)", font=dict(size=11),
+                ),
+                margin=dict(l=10, r=10, t=10, b=10),
             )
-            st.plotly_chart(fig_q, use_container_width=True)
+            st.plotly_chart(fig_q, use_container_width=True, key="qc_phred_hist", config=_PLOTLY_CFG)
 
     # ── Variant Review (chromatogram) ─────────────────────────────────────────
     with tab_chrom:
@@ -1179,7 +1249,7 @@ def main() -> None:
                 key="vr_pill_sel",
                 label_visibility="collapsed",
             )
-            st.markdown('<hr class="section-rule">', unsafe_allow_html=True)
+            st.markdown('<hr class="section-rule" style="margin-top:6px">', unsafe_allow_html=True)
 
             if not sel_labels:
                 st.markdown(
@@ -1270,12 +1340,12 @@ def main() -> None:
                 ),
                 yaxis=dict(title="Intensity", range=y_range, fixedrange=False, **_AXIS),
                 font=dict(color="#94A3B8"),
-                legend=dict(orientation="h", x=1, xanchor="right", y=1, yanchor="bottom",
+                legend=dict(orientation="h", x=0, xanchor="left", y=1, yanchor="bottom",
                             bgcolor="rgba(0,0,0,0)"),
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=_PLOTLY_CFG)
 
         if fwd_trace is None and rev_rc is None:
             st.markdown('<div class="alert alert-info">No trace data available.</div>',

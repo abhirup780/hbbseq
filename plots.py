@@ -185,7 +185,7 @@ def _genomic_to_c(pos: int) -> str:
         return f"c.315+{d_from}" if d_from <= d_to else f"c.316-{d_to}"
     if pos < 2152:                         # Exon 3
         return f"c.{pos - 1707}"
-    return f"c.*{pos - 2151}"             # 3'UTR
+    return f"c.*{pos - 2151}"             # 3' flank
 
 
 def _short_variant_label(v: "Variant") -> str:  # type: ignore[name-defined]
@@ -201,208 +201,217 @@ def plot_coverage_map(
     rev_ref_end: int | None,
     variants: "list[Variant] | None" = None,  # type: ignore[name-defined]
 ) -> go.Figure:
-    """Gene-structure diagram with forward and/or reverse read coverage overlaid.
+    """Gene-structure diagram with forward and/or reverse read coverage overlaid."""
 
-    Pass None for either strand's coordinates to omit that bar (single-strand mode
-    or when a trace failed to align).  Pass a list of Variant objects to overlay
-    tick marks above the gene cartoon; pass None to hide them.
+    TOTAL     = 2750
+    DISP_START = 700   # left edge of displayed region (captures all promoter variants)
+    DISP_END   = 2480  # right edge (past Exon 3 end + primer buffer)
+    Y_GENE    = 2.10   # centre of gene cartoon
+    H_EXON    = 0.32   # half-height for exon blocks
+    H_UTR     = 0.16   # half-height for UTR blocks
+    Y_FWD     = 1.10   # centre of forward coverage bar
+    Y_REV     = 0.38   # centre of reverse coverage bar
+    H_COVER   = 0.12
+    GENE_TOP  = Y_GENE + H_EXON
 
-    Draws the HBB locus (5'UTR → Exon1 → IVS-I → Exon2 → IVS-II → Exon3 → 3'UTR)
-    as a classic gene cartoon, then shows the trimmed+aligned span of each read
-    as a coloured bar underneath.
+    # ── Variant tier layout ───────────────────────────────────────────────────
+    # Greedy lane assignment: each variant goes into the lowest tier whose last
+    # occupant is ≥ MIN_SEP genomic bases away.  Vertical labels (textangle=-90)
+    # take no horizontal space so the only collision axis is Y.
+    MIN_SEP   = 140
+    TIER_STEP = 0.52   # Y gap between consecutive tiers
+    STEM_BASE = GENE_TOP + 0.18  # bottom of first tier's stem top
 
-    Coordinates are 0-based genomic positions matching reference.py _EXPECTED.
-    """
-    # ── Gene structure (hardcoded to match reference.py _EXPECTED) ─────────────
-    # (label, start, end, fill_color, bar_height_fraction)
-    _SEGMENTS = [
-        ("5'UTR",  0,    978,  "#aec7e8", 0.30),
-        ("Exon 1", 978,  1070, "#1f77b4", 0.60),
-        ("IVS-I",  1070, 1200, "#c7c7c7", 0.12),
-        ("Exon 2", 1200, 1423, "#1f77b4", 0.60),
-        ("IVS-II", 1423, 2023, "#c7c7c7", 0.12),
-        ("Exon 3", 2023, 2152, "#1f77b4", 0.60),
-        ("3'UTR",  2152, 2750, "#aec7e8", 0.30),
-    ]
-
-    TOTAL   = 2750
     show_variants = variants is not None and len(variants) > 0
-    Y_TOP   = 4.60 if show_variants else 3.20   # top of plot area
-    Y_GENE  = 2.55   # centre of gene row
-    Y_FWD   = 1.55   # centre of forward coverage row
-    Y_REV   = 0.55   # centre of reverse coverage row
-    H_GENE  = 0.40   # half-height for full exon blocks
-    H_COVER = 0.22   # half-height for coverage bars
-    GENE_TOP = Y_GENE + H_GENE  # top edge of gene cartoon
+    sorted_vars: list = []
+    var_tiers:   list[int] = []
+    n_tiers = 0
 
-    F_SEGMENT = 11   # gene segment label size
-    F_EDGE    = 11   # coverage bar edge c. label size
-    F_ROW     = 12   # Fwd/Rev row label size
-    F_VAR     = 12   # variant tick label size
+    if show_variants:
+        sorted_vars = sorted(variants, key=lambda v: v.ref_pos_genomic)
+        tier_last: list[float] = []
+        for v in sorted_vars:
+            gpos = v.ref_pos_genomic
+            placed = False
+            for i, last in enumerate(tier_last):
+                if gpos - last >= MIN_SEP:
+                    tier_last[i] = gpos
+                    var_tiers.append(i)
+                    placed = True
+                    break
+            if not placed:
+                var_tiers.append(len(tier_last))
+                tier_last.append(float(gpos))
+        n_tiers = max(var_tiers) + 1
+
+    # Label space above the highest tier stem (~1.1 Y units for vertical text)
+    Y_TOP = STEM_BASE + n_tiers * TIER_STEP + 1.15 if show_variants else GENE_TOP + 0.5
 
     shapes: list[dict] = []
     annotations: list[dict] = []
 
-    # Gene cartoon
-    for label, s, e, color, frac in _SEGMENTS:
-        h = H_GENE * frac / 0.60  # scale to fraction
-        shapes.append(dict(
-            type="rect", x0=s, x1=e,
-            y0=Y_GENE - h, y1=Y_GENE + h,
-            fillcolor=color, line_width=0,
-        ))
-        # Only annotate segments wide enough to fit text
-        if (e - s) > 60:
-            text_color = "white" if "Exon" in label else "#444444"
-            annotations.append(dict(
-                x=(s + e) / 2, y=Y_GENE,
-                text=label, showarrow=False,
-                font=dict(size=F_SEGMENT, color=text_color),
-                xanchor="center", yanchor="middle",
-            ))
+    # ── Gene cartoon ─────────────────────────────────────────────────────────
+    _SEGMENTS = [
+        ("5′ flank",  0,    978,  "#1E3A5F", H_UTR,  False),
+        ("Exon 1",   978,  1070, "#2563EB", H_EXON, True),
+        ("IVS-I",   1070, 1200, None,      0,      False),
+        ("Exon 2",  1200,  1423, "#2563EB", H_EXON, True),
+        ("IVS-II",  1423, 2023, None,      0,      False),
+        ("Exon 3",  2023,  2152, "#2563EB", H_EXON, True),
+        ("3′ flank", 2152, 2750, "#1E3A5F", H_UTR,  False),
+    ]
 
+    for label, s, e, color, h, is_exon in _SEGMENTS:
+        if color is None:
+            # Intron — draw as a thin horizontal line (classic gene diagram style)
+            shapes.append(dict(
+                type="line", x0=s, x1=e, y0=Y_GENE, y1=Y_GENE,
+                line=dict(color="#4B5563", width=2.5),
+            ))
+            annotations.append(dict(
+                x=(s + e) / 2, y=Y_GENE + 0.04,
+                text=label, showarrow=False,
+                font=dict(size=10, color="#4B5563"),
+                xanchor="center", yanchor="bottom",
+                bgcolor="rgba(10,15,26,0.0)",
+            ))
+        else:
+            shapes.append(dict(
+                type="rect", x0=s, x1=e,
+                y0=Y_GENE - h, y1=Y_GENE + h,
+                fillcolor=color, line_width=0,
+            ))
+            vis_s = max(s, DISP_START)
+            vis_e = min(e, DISP_END)
+            if vis_e - vis_s > 50:
+                annotations.append(dict(
+                    x=(vis_s + vis_e) / 2, y=Y_GENE,
+                    text=label, showarrow=False,
+                    font=dict(size=10, color="white" if is_exon else "#93C5FD"),
+                    xanchor="center", yanchor="middle",
+                ))
+
+    # ── Exon/intron boundary guide lines ─────────────────────────────────────
+    for pos in (978, 1070, 1200, 1423, 2023, 2152):
+        shapes.append(dict(
+            type="line", x0=pos, x1=pos, y0=0, y1=GENE_TOP,
+            line=dict(color="rgba(255,255,255,0.06)", width=1, dash="dot"),
+        ))
+
+    # ── Coverage bars ─────────────────────────────────────────────────────────
     def _coverage_bar(y: float, start: int, end: int, color: str, label: str) -> None:
         shapes.append(dict(
             type="rect", x0=start, x1=end,
             y0=y - H_COVER, y1=y + H_COVER,
-            fillcolor=color, opacity=0.75, line_width=0,
+            fillcolor=color, opacity=0.82, line_width=0,
         ))
-        # c. coordinate labels at bar edges
-        for xpos, anchor in ((start, "center"), (end, "center")):
+        for xpos in (start, end):
             annotations.append(dict(
-                x=xpos, y=y - H_COVER - 0.08,
+                x=xpos, y=y - H_COVER - 0.06,
                 text=_genomic_to_c(xpos), showarrow=False,
-                font=dict(size=F_EDGE, color=color),
-                xanchor=anchor, yanchor="top",
+                font=dict(size=10, color=color),
+                xanchor="center", yanchor="top",
             ))
-        # Row label on the left
         annotations.append(dict(
-            x=-30, y=y,
+            xref="paper", x=-0.02, y=y,
             text=f"<b>{label}</b>", showarrow=False,
-            font=dict(size=F_ROW, color=color),
+            font=dict(size=12, color=color),
             xanchor="right", yanchor="middle",
         ))
 
+    def _missing_bar(y: float, label: str) -> None:
+        annotations.append(dict(
+            xref="paper", x=-0.02, y=y,
+            text=f"<b>{label}</b>", showarrow=False,
+            font=dict(size=12, color="#4B5563"),
+            xanchor="right", yanchor="middle",
+        ))
+        annotations.append(dict(
+            x=(DISP_START + DISP_END) / 2, y=y,
+            text="not available", showarrow=False,
+            font=dict(size=12, color="#4B5563"),
+            xanchor="center", yanchor="middle",
+        ))
+
     if fwd_ref_start is not None and fwd_ref_end is not None:
-        _coverage_bar(Y_FWD, fwd_ref_start, fwd_ref_end, "#2ca02c", "Fwd")
+        _coverage_bar(Y_FWD, fwd_ref_start, fwd_ref_end, "#22C55E", "Fwd")
     else:
-        annotations.append(dict(
-            x=-30, y=Y_FWD, text="<b>Fwd</b>", showarrow=False,
-            font=dict(size=F_ROW, color="#888888"), xanchor="right", yanchor="middle",
-        ))
-        annotations.append(dict(
-            x=TOTAL / 2, y=Y_FWD, text="not available", showarrow=False,
-            font=dict(size=F_ROW, color="#888888"), xanchor="center", yanchor="middle",
-        ))
+        _missing_bar(Y_FWD, "Fwd")
 
     if rev_ref_start is not None and rev_ref_end is not None:
-        _coverage_bar(Y_REV, rev_ref_start, rev_ref_end, "#d62728", "Rev")
+        _coverage_bar(Y_REV, rev_ref_start, rev_ref_end, "#F87171", "Rev")
     else:
-        annotations.append(dict(
-            x=-30, y=Y_REV, text="<b>Rev</b>", showarrow=False,
-            font=dict(size=F_ROW, color="#888888"), xanchor="right", yanchor="middle",
-        ))
-        annotations.append(dict(
-            x=TOTAL / 2, y=Y_REV, text="not available", showarrow=False,
-            font=dict(size=F_ROW, color="#888888"), xanchor="center", yanchor="middle",
-        ))
+        _missing_bar(Y_REV, "Rev")
 
-    # Vertical guide lines at exon/intron boundaries
-    for pos in (978, 1070, 1200, 1423, 2023, 2152):
-        shapes.append(dict(
-            type="line", x0=pos, x1=pos, y0=0, y1=GENE_TOP,
-            line=dict(color="#dddddd", width=1, dash="dot"),
-        ))
-
-    # ── Variant tick marks ────────────────────────────────────────────────────
+    # ── Variant lollipops ─────────────────────────────────────────────────────
     dot_xs: list[float] = []
     dot_ys: list[float] = []
     dot_colors: list[str] = []
 
-    if show_variants:
-        # Two label rows to avoid overlap: alternate when consecutive variants
-        # are within MIN_SEP genomic positions.
-        MIN_SEP     = 180
-        Y_TICK_LOW  = GENE_TOP + 0.20   # tick tip — row A
-        Y_TICK_HIGH = GENE_TOP + 0.70   # tick tip — row B (staggered)
-        Y_LBL_LOW   = Y_TICK_LOW  + 0.12
-        Y_LBL_HIGH  = Y_TICK_HIGH + 0.12
+    for v, tier in zip(sorted_vars, var_tiers):
+        gpos     = v.ref_pos_genomic
+        is_path  = getattr(v, "known_variant_name", None) is not None
+        color    = "#EF4444" if is_path else "#64748B"
+        stem_top = STEM_BASE + tier * TIER_STEP
 
-        sorted_vars = sorted(variants, key=lambda v: v.ref_pos_genomic)
-        last_pos = -9999
-        use_high = False
+        shapes.append(dict(
+            type="line", x0=gpos, x1=gpos,
+            y0=GENE_TOP, y1=stem_top,
+            line=dict(color=color, width=1.5),
+        ))
+        dot_xs.append(gpos)
+        dot_ys.append(stem_top)
+        dot_colors.append(color)
 
-        for v in sorted_vars:
-            gpos    = v.ref_pos_genomic
-            is_path = getattr(v, "known_variant_name", None) is not None
-            # Determine row
-            if gpos - last_pos < MIN_SEP:
-                use_high = not use_high
-            else:
-                use_high = False
-            last_pos = gpos
+        short = _short_variant_label(v)
+        annotations.append(dict(
+            x=gpos, y=stem_top + 0.06,
+            text=f"<b>{short}</b>" if is_path else short,
+            showarrow=False,
+            font=dict(size=11, color=color),
+            xanchor="center", yanchor="bottom",
+            textangle=-90,
+        ))
 
-            tick_y = Y_TICK_HIGH if use_high else Y_TICK_LOW
-            lbl_y  = Y_LBL_HIGH  if use_high else Y_LBL_LOW
-            color  = "#ff6b6b" if is_path else "#bbbbbb"
-
-            # Tick stem from gene top to tick_y
-            shapes.append(dict(
-                type="line", x0=gpos, x1=gpos,
-                y0=GENE_TOP, y1=tick_y,
-                line=dict(color=color, width=2),
-            ))
-            # Collect dot position — rendered as scatter markers (pixel-space, stays round)
-            dot_xs.append(gpos)
-            dot_ys.append(tick_y)
-            dot_colors.append(color)
-
-            # Label
-            short = _short_variant_label(v)
-            annotations.append(dict(
-                x=gpos, y=lbl_y,
-                text=f"<b>{short}</b>" if is_path else short,
-                showarrow=False,
-                font=dict(size=F_VAR, color=color),
-                xanchor="center", yanchor="bottom",
-                textangle=-40,
-            ))
-
+    # ── Figure ────────────────────────────────────────────────────────────────
     fig = go.Figure()
-    # Invisible scatter to set axis range (shapes don't drive axes)
-    fig.add_trace(go.Scatter(x=[0, TOTAL], y=[0, Y_TOP],
-                             mode="markers", marker=dict(opacity=0)))
-    # Lollipop heads — pixel-space markers stay perfectly round regardless of axis scaling
+    fig.add_trace(go.Scatter(
+        x=[DISP_START, DISP_END], y=[0, Y_TOP],
+        mode="markers", marker=dict(opacity=0),
+        hoverinfo="skip", showlegend=False,
+    ))
     if dot_xs:
         fig.add_trace(go.Scatter(
             x=dot_xs, y=dot_ys,
             mode="markers",
-            marker=dict(size=9, color=dot_colors, line_width=0),
-            hoverinfo="skip",
-            showlegend=False,
+            marker=dict(size=6, color=dot_colors, line_width=0),
+            hoverinfo="skip", showlegend=False,
         ))
 
+    # Gene + transcript label — bottom-right, anchors HGVS coordinates to RefSeq
+    annotations.append(dict(
+        xref="paper", yref="paper", x=1.0, y=0.0,
+        text="<i>HBB</i> · NM_000518.5", showarrow=False,
+        font=dict(size=9, color="#334155"),
+        xanchor="right", yanchor="top",
+    ))
+
+    height = 260 + n_tiers * 45
     fig.update_layout(
         shapes=shapes,
         annotations=annotations,
-        height=320 if show_variants else 260,
-        margin=dict(l=55, r=20, t=35, b=20),
+        height=height,
+        margin=dict(l=55, r=20, t=8, b=30),
         xaxis=dict(
-            range=[-80, TOTAL + 50],
-            tickvals=[0, 978, 1070, 1200, 1423, 2023, 2152, 2750],
-            ticktext=["0", "978\n(E1)", "1070\n(I1)", "1200\n(E2)",
-                      "1423\n(I2)", "2023\n(E3)", "2152\n(3')", "2750"],
-            tickfont=dict(size=10),
-            showgrid=False,
-            zeroline=False,
-            color="rgba(150,150,150,1)",
+            range=[DISP_START, DISP_END],
+            showticklabels=False,
+            showgrid=False, zeroline=False,
         ),
         yaxis=dict(range=[0, Y_TOP], showticklabels=False,
                    showgrid=False, zeroline=False),
-        font=dict(color="#aaaaaa"),
+        font=dict(color="#94A3B8"),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
-        title=dict(text="HBB gene coverage", font=dict(size=13)),
     )
     return fig
