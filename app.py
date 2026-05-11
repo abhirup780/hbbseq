@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_REF = Path(__file__).parent / "reference" / "HBB_reference.fasta"
 
 # Bump this whenever pipeline code changes that affect cached results.
-_PIPELINE_VERSION = "35"
+_PIPELINE_VERSION = "36"
 
 _PLOTLY_CFG = {
     "modeBarButtonsToRemove": [
